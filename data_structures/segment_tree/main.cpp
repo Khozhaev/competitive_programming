@@ -24,7 +24,7 @@ public:
         if constexpr (NeedGroupUpdate) {
             RecursiveGetImpl(1, 0, Size - 1, l, r);
         } else {
-            IterativeGetImpl(l, r);
+            IterativeGetImpl(l, r + 1);
         }
     }
     inline void Update(size_t pos, TVal val) {
@@ -66,6 +66,8 @@ private:
             Tree[i] = Tree[i << 1u] + Tree[(i << 1u) | 1u];
         }
     }
+
+    //[l, r)
     inline TNode IterativeGetImpl(size_t l, size_t r) {
         TNode res = {};
         for (l += Size, r += Size; l < r; l >>= 1u, r >>= 1u) {
