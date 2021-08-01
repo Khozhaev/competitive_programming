@@ -1,13 +1,14 @@
 #include <iostream>
-
 #include <random>
+
+
 std::random_device rd;
 std::mt19937 mt(rd());
 std::uniform_int_distribution<uint64_t> dist(0ull, 1'000'000'000'000ull);
 inline uint64_t Random() {
     return dist(mt);
 }
-template<typename TValue>
+template<typename TValue, bool PersistentMode = false>
 struct TNode {
     uint64_t Prior;
     TNode* Left;
@@ -45,6 +46,14 @@ struct TNode {
         return root->Value;
     }
 
+    static inline TNode* Copy(TNode* root) {
+        if (!root) {
+            return nullptr;
+        }
+        return TNode(*root);
+    }
+
+
     static inline void Update(TNode* root) {
         if (!root) {
             return;
@@ -61,10 +70,16 @@ struct TNode {
             return rootLeft;
         }
         if (rootLeft->Prior < rootRight->Prior) {
+            if constexpr (PersistentMode) {
+                rootLeft = Copy(rootLeft);
+            }
             rootLeft->Right = Merge(rootLeft->Right, rootRight);
             Update(rootLeft);
             return rootLeft;
         } else {
+            if constexpr (PersistentMode) {
+                rootRight = Copy(rootRight);
+            }
             rootRight->Left = Merge(rootLeft, rootRight->Left);
             Update(rootRight);
             return rootRight;
@@ -74,6 +89,9 @@ struct TNode {
     static inline std::pair<TNode*, TNode*> SplitSz(TNode* root, ssize_t sz) {
         if (!root) {
             return {nullptr, nullptr};
+        }
+        if constexpr (PersistentMode) {
+            root = Copy(root);
         }
         ssize_t lsz = GetSize(root->Left);
         if (lsz >= sz) {
@@ -92,6 +110,9 @@ struct TNode {
     static inline std::pair<TNode*, TNode*> SplitVal(TNode* root, const TValue& value) {
         if (!root) {
             return {nullptr, nullptr};
+        }
+        if constexpr (PersistentMode) {
+            root = Copy(root);
         }
         if (root->Value < value) {
             auto p = SplitVal(root->Right, value);
@@ -131,12 +152,16 @@ struct TNode {
         ssize_t lsz = GetSize(root->Left);
         if (lsz == pos) {
             return Merge(root->Left, root->Right);
-        } else if (lsz > pos) {
-            root = ErasePos(root->Left, pos);
+        }
+        if constexpr (PersistentMode) {
+            root = Copy(root);
+        }
+        if (lsz > pos) {
+            root->Left = ErasePos(root->Left, pos);
             Update(root);
             return root;
         } else {
-            root = ErasePos(root->Right, pos - 1 - lsz);
+            root->Right = ErasePos(root->Right, pos - 1 - lsz);
             Update(root);
             return root;
         }
@@ -147,7 +172,11 @@ struct TNode {
         }
         if (root->Value == value) {
             return Merge(root->Left, root->Right);
-        } else if (root->Value > value) {
+        }
+        if constexpr (PersistentMode) {
+            root = Copy(root);
+        }
+        if (root->Value > value) {
             root = EraseVal(root->Left, value);
             Update(root);
             return root;
@@ -164,6 +193,9 @@ struct TNode {
      * если нужно ускорение - заменить вызов функтора на свой код. */
     template<typename TFunctor>
     static inline TNode* DoSegment(TNode* root, ssize_t l, ssize_t r, TFunctor& functor) {
+        if constexpr (PersistentMode) {
+            root = Copy(root);
+        }
         auto p1 = SplitSz(root,r + 1);
         auto p2 = SplitSz(p1.first, l);
         functor(p2.second);
