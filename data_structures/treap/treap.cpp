@@ -217,10 +217,10 @@ public:
         root = Node::InsertVal(root, new Node(std::move(val)));
     }
     inline void DeletePos(ssize_t pos) {
-        root = Node::DeletePos(pos);
+        root = Node::ErasePos(root, pos);
     }
     inline void DeleteVal(const TValue& val) {
-        root = Node::DeleteVal(val);
+        root = Node::EraseVal(root, val);
     }
 
     /* Применяет операцию на отрезке [l, r], нумерация с нуля.
@@ -235,10 +235,56 @@ public:
         return result;
     }
 
+    // Don't use this
+    inline Node* Get() {
+        return root;
+    }
 private:
     Node* root = nullptr;
 };
 
+template<typename TValue>
+class TPersistentTreap {
+public:
+    using Node = TNode<TValue, true>;
+    using Treap = TPersistentTreap<TValue>;
+
+    TPersistentTreap() = default;
+    TPersistentTreap(Node* root_)
+        : root(root_)
+    {}
+
+    inline Treap InsertPos(TValue val, ssize_t pos) {
+        return Treap(Node::InsertPos(root, new Node(std::move(val)), pos));
+    }
+    inline Treap InsertVal(TValue val) {
+        return Treap(Node::InsertVal(root, new Node(std::move(val))));
+    }
+    inline Treap DeletePos(ssize_t pos) {
+        return Treap(Node::ErasePos(root, pos));
+    }
+    inline Treap DeleteVal(const TValue& val) {
+        return Treap(Node::EraseVal(root, val));
+    }
+
+    /* Применяет операцию на отрезке [l, r], нумерация с нуля.
+     * Может работать медленно из-за прослойки вызова функции,
+     * если нужно ускорение - заменить вызов функтора на свой код. */
+    template<typename TFunctor>
+    inline Treap DoSegment(ssize_t l, ssize_t r, TFunctor& functor) {
+        auto p1 = Node::SplitSz(root, r + 1);
+        auto p2 = Node::SplitSz(p1.first, l);
+        functor(p2.second);
+        return Treap(Merge(Merge(p2.first, p2.second), p1.second));
+    }
+
+    // Don't use this
+    inline Node* Get() {
+        return root;
+    }
+private:
+    Node* root = nullptr;
+};
 // for example
 template<typename T = int>
 struct SumTreap {
