@@ -336,19 +336,37 @@ struct SumTreap {
 
 using namespace std;
 int main() {
-    TTreap<SumTreap<int>> treap;
-    treap.InsertPos(1,  0);
-    treap.InsertPos(3, 1);
-    treap.InsertPos(5, 2);
-    treap.InsertPos(7, 2);
+    {
+        // example
+        TTreap<SumTreap<int>> treap;
+        treap.InsertPos(1,  0);
+        treap.InsertPos(3, 1);
+        treap.InsertPos(5, 2);
+        treap.InsertPos(7, 2);
 
-    cout << treap.DoSegment(1, 2, [](auto* node) {
-        return node ? node->Value.sum : 0;
-    }) << endl;
+        cout << treap.DoSegment(1, 2, [](auto* node) {
+            return node ? node->Value.sum : 0;
+        }) << endl;
+    }
+    {
+        // example
+        TPersistentTreap<SumTreap<int>> persistentTreap;
+        auto treap1 = persistentTreap.InsertPos(1, 0);
+        auto treap2 = persistentTreap.InsertPos(2, 1);
+        auto treap3 = persistentTreap.InsertPos(3, 1);
 
-    TPersistentTreap<SumTreap<int>> persistentTreap;
-    auto treap1 = persistentTreap.InsertPos(1, 0);
-    auto treap2 = persistentTreap.InsertPos(2, 1);
-    auto treap3 = persistentTreap.InsertPos(3, 1);
+        int res = 0;
+        auto f = [&res](auto* node) {
+            res = node ? node->Value.sum : 0;
+        };
+        treap2.DoSegment(0, 1, f);
+        cout << res << endl;
+        treap3.DoSegment(0, 1, f);
+        cout << res << endl;
+    }
+
+
+
+
 
 }
