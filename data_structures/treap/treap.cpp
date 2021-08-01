@@ -1,9 +1,11 @@
 #include <iostream>
 
-
-
+#include <random>
+std::random_device rd;
+std::mt19937 mt(rd());
+std::uniform_int_distribution<uint64_t> dist(0ull, 1'000'000'000'000ull);
 inline uint64_t Random() {
-    return rand();
+    return dist(mt);
 }
 template<typename TValue>
 struct TNode {
@@ -48,7 +50,7 @@ struct TNode {
             return;
         }
         root->Size = 1 + GetSize(root->Left) + GetSize(root->Right);
-        root->Value.Upd(GetValue(root->Left), GetValue(root->Right));
+        root->Value.Update(GetValue(root->Left), GetValue(root->Right));
     }
 
     static inline TNode* Merge(TNode* rootLeft, TNode* rootRight) {
@@ -80,7 +82,7 @@ struct TNode {
             Update(root);
             return {p.first, root};
         } else {
-            auto p = SplitSz(root->right, sz - lsz - 1);
+            auto p = SplitSz(root->Right, sz - lsz - 1);
             root->Right = p.first;
             Update(root);
             return {root, p.second};
@@ -164,8 +166,46 @@ struct TNode {
     static inline TNode* DoSegment(TNode* root, ssize_t l, ssize_t r, TFunctor& functor) {
         auto p1 = SplitSz(root,r + 1);
         auto p2 = SplitSz(p1.first, l);
-        functor(p2);
+        functor(p2.second);
         root = Merge(Merge(p2.first, p2.second), p1.second);
         return root;
     }
  };
+
+
+
+// for example
+template<typename T = int>
+struct SumTreap {
+    T key = 0;
+    T sum = 0;
+    SumTreap() = default;
+    SumTreap(T val)
+        : key(val)
+        , sum(key)
+    {}
+
+    inline bool operator<(const SumTreap<T>& other) const {
+        return key < other.key;
+    }
+    void Update(const SumTreap<T>& left, const SumTreap& right) {
+        sum = left.sum + right.sum + key;
+    }
+};
+
+int main() {
+    using Node = TNode<SumTreap<int>>;
+    Node* root = nullptr;
+    Node* v = new Node(3);
+    root = Node::InsertPos(root, v, 0);
+    root = Node::InsertPos(root, new Node(7), 1);
+    root = Node::InsertPos(root, new Node(9), 2);
+    root = Node::InsertPos(root, new Node(4), 2);
+    int res = 0;
+    auto f = [&](Node* root) {
+        if (!root) return;
+        res = root->Value.sum;
+    };
+    root = Node::DoSegment(root, 1, 2, f);
+    std::cout << res << std::endl;
+}
