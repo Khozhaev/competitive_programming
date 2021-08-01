@@ -170,18 +170,18 @@ struct TNode {
         if (!root) {
             return nullptr;
         }
-        if (root->Value == value) {
+        if (root->Value == value) { // need copy root?
             return Merge(root->Left, root->Right);
         }
         if constexpr (PersistentMode) {
             root = Copy(root);
         }
         if (root->Value > value) {
-            root = EraseVal(root->Left, value);
+            root->Left = EraseVal(root->Left, value);
             Update(root);
             return root;
         } else {
-            root = EraseVal(root->Right, value);
+            root->Right = EraseVal(root->Right, value);
             Update(root);
             return root;
         }
@@ -202,9 +202,42 @@ struct TNode {
         root = Merge(Merge(p2.first, p2.second), p1.second);
         return root;
     }
- };
+};
 
+// todo: fast build, fast insert
+template<typename TValue>
+class TTreap {
+public:
+    using Node = TNode<TValue, false>;
 
+    inline void InsertPos(TValue val, ssize_t pos) {
+        root = Node::InsertPos(root, new Node(std::move(val)), pos);
+    }
+    inline void InsertVal(TValue val) {
+        root = Node::InsertVal(root, new Node(std::move(val)));
+    }
+    inline void DeletePos(ssize_t pos) {
+        root = Node::DeletePos(pos);
+    }
+    inline void DeleteVal(const TValue& val) {
+        root = Node::DeleteVal(val);
+    }
+
+    /* Применяет операцию на отрезке [l, r], нумерация с нуля.
+     * Может работать медленно из-за прослойки вызова функции,
+     * если нужно ускорение - заменить вызов функтора на свой код. */
+    template<typename TFunctor>
+    inline auto DoSegment(ssize_t l, ssize_t r, TFunctor& functor) {
+        auto p1 = Node::SplitSz(root, r + 1);
+        auto p2 = Node::SplitSz(p1.first, l);
+        auto result = functor(p2.second);
+        root = Merge(Merge(p2.first, p2.second), p1.second);
+        return result;
+    }
+
+private:
+    Node* root = nullptr;
+};
 
 // for example
 template<typename T = int>
@@ -220,10 +253,14 @@ struct SumTreap {
     inline bool operator<(const SumTreap<T>& other) const {
         return key < other.key;
     }
+    inline bool operator==(const SumTreap<T>& other) const {
+        return key == other.key;
+    }
     void Update(const SumTreap<T>& left, const SumTreap& right) {
         sum = left.sum + right.sum + key;
     }
 };
+
 
 int main() {
     using Node = TNode<SumTreap<int>>;
