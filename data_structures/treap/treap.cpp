@@ -50,7 +50,7 @@ struct TNode {
         if (!root) {
             return nullptr;
         }
-        return TNode(*root);
+        return new TNode(*root);
     }
 
 
@@ -202,6 +202,17 @@ struct TNode {
         root = Merge(Merge(p2.first, p2.second), p1.second);
         return root;
     }
+    template<typename TFunctor>
+    static inline TNode* DoSegment(TNode* root, ssize_t l, ssize_t r, const TFunctor& functor) {
+        if constexpr (PersistentMode) {
+            root = Copy(root);
+        }
+        auto p1 = SplitSz(root,r + 1);
+        auto p2 = SplitSz(p1.first, l);
+        functor(p2.second);
+        root = Merge(Merge(p2.first, p2.second), p1.second);
+        return root;
+    }
 };
 
 // todo: fast build, fast insert
@@ -231,7 +242,15 @@ public:
         auto p1 = Node::SplitSz(root, r + 1);
         auto p2 = Node::SplitSz(p1.first, l);
         auto result = functor(p2.second);
-        root = Merge(Merge(p2.first, p2.second), p1.second);
+        root = Node::Merge(Node::Merge(p2.first, p2.second), p1.second);
+        return result;
+    }
+    template<typename TFunctor>
+    inline auto DoSegment(ssize_t l, ssize_t r, const TFunctor& functor) {
+        auto p1 = Node::SplitSz(root, r + 1);
+        auto p2 = Node::SplitSz(p1.first, l);
+        auto result = functor(p2.second);
+        root = Node::Merge(Node::Merge(p2.first, p2.second), p1.second);
         return result;
     }
 
@@ -275,7 +294,14 @@ public:
         auto p1 = Node::SplitSz(root, r + 1);
         auto p2 = Node::SplitSz(p1.first, l);
         functor(p2.second);
-        return Treap(Merge(Merge(p2.first, p2.second), p1.second));
+        return Treap(Node::Merge(Node::Merge(p2.first, p2.second), p1.second));
+    }
+    template<typename TFunctor>
+    inline Treap DoSegment(ssize_t l, ssize_t r, const TFunctor& functor) {
+        auto p1 = Node::SplitSz(root, r + 1);
+        auto p2 = Node::SplitSz(p1.first, l);
+        functor(p2.second);
+        return Treap(Node::Merge(Node::Merge(p2.first, p2.second), p1.second));
     }
 
     // Don't use this
@@ -302,25 +328,27 @@ struct SumTreap {
     inline bool operator==(const SumTreap<T>& other) const {
         return key == other.key;
     }
-    void Update(const SumTreap<T>& left, const SumTreap& right) {
+    inline void Update(const SumTreap<T>& left, const SumTreap& right) {
         sum = left.sum + right.sum + key;
     }
 };
 
 
+using namespace std;
 int main() {
-    using Node = TNode<SumTreap<int>>;
-    Node* root = nullptr;
-    Node* v = new Node(3);
-    root = Node::InsertPos(root, v, 0);
-    root = Node::InsertPos(root, new Node(7), 1);
-    root = Node::InsertPos(root, new Node(9), 2);
-    root = Node::InsertPos(root, new Node(4), 2);
-    int res = 0;
-    auto f = [&](Node* root) {
-        if (!root) return;
-        res = root->Value.sum;
-    };
-    root = Node::DoSegment(root, 1, 2, f);
-    std::cout << res << std::endl;
+    TTreap<SumTreap<int>> treap;
+    treap.InsertPos(1,  0);
+    treap.InsertPos(3, 1);
+    treap.InsertPos(5, 2);
+    treap.InsertPos(7, 2);
+
+    cout << treap.DoSegment(1, 2, [](auto* node) {
+        return node ? node->Value.sum : 0;
+    }) << endl;
+
+    TPersistentTreap<SumTreap<int>> persistentTreap;
+    auto treap1 = persistentTreap.InsertPos(1, 0);
+    auto treap2 = persistentTreap.InsertPos(2, 1);
+    auto treap3 = persistentTreap.InsertPos(3, 1);
+
 }
